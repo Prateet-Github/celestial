@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <unistd.h>
@@ -36,8 +37,26 @@ int main(void)
     return EXIT_FAILURE;
   }
 
-  printf("celestial listening on port 8080");
+  printf("Celestial listening on :8080\n");
 
+  struct sockaddr_in client_addr;
+  socklen_t client_len = sizeof(client_addr);
+
+  int client_fd = accept(
+      server_fd,
+      (struct sockaddr *)&client_addr,
+      &client_len);
+
+  if (client_fd == -1)
+  {
+    perror("accept");
+    close(server_fd);
+    return EXIT_FAILURE;
+  }
+
+  printf("Client connected!\n");
+
+  close(client_fd);
   close(server_fd);
 
   return EXIT_SUCCESS;
