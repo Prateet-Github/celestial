@@ -29,7 +29,14 @@ int main(void)
     return EXIT_FAILURE;
   }
 
-  printf("celestial bound to port 8080");
+  if (listen(server_fd, 128) == -1)
+  {
+    perror("listen");
+    close(server_fd);
+    return EXIT_FAILURE;
+  }
+
+  printf("celestial listening on port 8080");
 
   close(server_fd);
 
