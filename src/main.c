@@ -14,7 +14,23 @@ int main(void)
     return EXIT_FAILURE;
   }
 
-  printf("socket created: %d\n", server_fd);
+  struct sockaddr_in server_addr = {
+      .sin_family = AF_INET,
+      .sin_port = htons(8080),
+      .sin_addr.s_addr = htonl(INADDR_ANY)};
+
+  if (bind(
+          server_fd,
+          (struct sockaddr *)&server_addr,
+          sizeof(server_addr)) == -1)
+  {
+    perror("bind");
+    close(server_fd);
+    return EXIT_FAILURE;
+  }
+
+  printf("celestial bound to port 8080");
+
   close(server_fd);
 
   return EXIT_SUCCESS;
