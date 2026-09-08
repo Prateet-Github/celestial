@@ -7,7 +7,7 @@
 
 int main(void)
 {
-  int server_fd = socket(AF_INET, SOCK_STREAM, 0);
+  int server_fd = socket(AF_INET, SOCK_STREAM, 0); // for UDP we use SOCK_DGRAM
 
   if (server_fd == -1)
   {
@@ -16,9 +16,9 @@ int main(void)
   }
 
   struct sockaddr_in server_addr = {
-      .sin_family = AF_INET,
-      .sin_port = htons(8080),
-      .sin_addr.s_addr = htonl(INADDR_ANY)};
+      .sin_family = AF_INET,                 //  ipv4
+      .sin_port = htons(8080),               // port
+      .sin_addr.s_addr = htonl(INADDR_ANY)}; // 0.0.0.0
 
   if (bind(
           server_fd,
@@ -55,6 +55,23 @@ int main(void)
   }
 
   printf("Client connected!\n");
+
+  char buffer[4096];
+
+  ssize_t bytes_read = read(client_fd, buffer, sizeof(buffer) - 1);
+
+  if (bytes_read == -1)
+  {
+    perror("read");
+    close(client_fd);
+    close(server_fd);
+    return EXIT_FAILURE;
+  }
+
+  buffer[bytes_read] = '\0';
+
+  printf("Received %zd bytes:\n", bytes_read);
+  printf("%s\n", buffer);
 
   close(client_fd);
   close(server_fd);
