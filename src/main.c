@@ -8,6 +8,7 @@
 
 int main(void)
 {
+  // create a socket
   int server_fd = socket(AF_INET, SOCK_STREAM, 0);
 
   if (server_fd == -1)
@@ -16,22 +17,29 @@ int main(void)
     return EXIT_FAILURE;
   }
 
+  // set up the server address
   struct sockaddr_in server_addr = {
       .sin_family = AF_INET,
       .sin_port = htons(8080),
       .sin_addr.s_addr = htonl(INADDR_ANY)};
 
-  if (bind(
-          server_fd,
-          (struct sockaddr *)&server_addr,
-          sizeof(server_addr)) == -1)
+  // bind
+  int bind_result = bind(
+      server_fd,
+      (struct sockaddr *)&server_addr,
+      sizeof(server_addr));
+
+  if (bind_result == -1)
   {
     perror("bind");
     close(server_fd);
     return EXIT_FAILURE;
   }
 
-  if (listen(server_fd, 128) == -1)
+  // listen
+  int listen_result = listen(server_fd, 128);
+
+  if (listen_result == -1)
   {
     perror("listen");
     close(server_fd);
@@ -43,6 +51,7 @@ int main(void)
   struct sockaddr_in client_addr;
   socklen_t client_len = sizeof(client_addr);
 
+  // accept
   int client_fd = accept(
       server_fd,
       (struct sockaddr *)&client_addr,
@@ -57,8 +66,9 @@ int main(void)
 
   printf("Client connected!\n");
 
-  char buffer[4096];
+  char buffer[4096]; // buffer to hold incoming data
 
+  // read
   ssize_t bytes_read = read(
       client_fd,
       buffer,
@@ -72,11 +82,12 @@ int main(void)
     return EXIT_FAILURE;
   }
 
-  buffer[bytes_read] = '\0';
+  buffer[bytes_read] = '\0'; // null terminate the buffer
 
   printf("Received %zd bytes:\n", bytes_read);
   printf("%s\n", buffer);
 
+  // send a response to the client
   const char *response =
       "HTTP/1.1 200 OK\r\n"
       "Content-Length: 17\r\n"
@@ -86,6 +97,7 @@ int main(void)
 
   size_t response_length = strlen(response);
 
+  // write
   ssize_t bytes_written = write(
       client_fd,
       response,
@@ -101,6 +113,7 @@ int main(void)
 
   printf("Sent %zd bytes\n", bytes_written);
 
+  // close the sockets
   close(client_fd);
   close(server_fd);
 
