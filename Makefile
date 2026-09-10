@@ -2,7 +2,7 @@ CC = cc
 CFLAGS = -Wall -Wextra -Werror -std=c11
 
 TARGET = celestial
-SRC = src/main.c
+SRC = src/main.c src/server.c
 
 $(TARGET): $(SRC)
 	$(CC) $(CFLAGS) $(SRC) -o $(TARGET)
