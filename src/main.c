@@ -3,6 +3,7 @@
 #include <unistd.h>
 
 #include "server.h"
+#include "event_loop.h"
 
 int main(void)
 {
@@ -14,6 +15,17 @@ int main(void)
   }
 
   printf("Celestial listening on :8080\n");
+
+  int kq = event_loop_create();
+
+  if (kq == -1)
+  {
+    perror("kqueue");
+    close(server_fd);
+    return EXIT_FAILURE;
+  }
+
+  printf("kqueue created: %d\n", kq);
 
   int client_fd = server_accept(server_fd);
 
