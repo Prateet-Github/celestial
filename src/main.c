@@ -37,6 +37,31 @@ int main(void)
 
   printf("Server socket registered with kqueue\n");
 
+  struct kevent events[16];
+
+  int event_count = event_loop_wait(
+      kq,
+      events,
+      16);
+
+  if (event_count == -1)
+  {
+    perror("kevent");
+    close(kq);
+    close(server_fd);
+    return EXIT_FAILURE;
+  }
+
+  for (int i = 0; i < event_count; i++)
+  {
+    printf(
+        "Event: fd=%lu filter=%d\n",
+        events[i].ident,
+        events[i].filter);
+  }
+
+  printf("Received %d event(s)\n", event_count);
+
   int client_fd = server_accept(server_fd);
 
   if (client_fd == -1)

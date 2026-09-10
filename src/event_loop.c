@@ -17,3 +17,9 @@ int event_loop_add_read(int kq, int fd)
 
   return kevent(kq, &event, 1, NULL, 0, NULL);
 }
+
+int event_loop_wait(int kq, struct kevent *events, int max_events)
+{
+  // wait for events to occur on the kqueue and populate the events array with the ready events
+  return kevent(kq, NULL, 0, events, max_events, NULL);
+}
