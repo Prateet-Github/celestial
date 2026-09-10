@@ -5,6 +5,8 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <unistd.h>
+#include <fcntl.h>
+#include <errno.h>
 
 int main(void)
 {
@@ -14,6 +16,23 @@ int main(void)
   if (server_fd == -1)
   {
     perror("socket");
+    return EXIT_FAILURE;
+  }
+
+  int flags = fcntl(server_fd, F_GETFL, 0);
+
+  if (flags == -1)
+  {
+    perror("fcntl F_GETFL");
+    close(server_fd);
+    return EXIT_FAILURE;
+  }
+
+  // set the socket to non blocking mode
+  if (fcntl(server_fd, F_SETFL, flags | O_NONBLOCK) == -1)
+  {
+    perror("fcntl F_SETFL");
+    close(server_fd);
     return EXIT_FAILURE;
   }
 
@@ -59,14 +78,23 @@ int main(void)
 
   if (client_fd == -1)
   {
-    perror("accept");
+    if (errno == EAGAIN || errno == EWOULDBLOCK)
+    {
+      printf("No connection available\n");
+    }
+    else
+    {
+      perror("accept");
+    }
+
     close(server_fd);
     return EXIT_FAILURE;
   }
 
   printf("Client connected!\n");
 
-  char buffer[4096]; // buffer to hold incoming data
+  // buffer to hold incoming data
+  char buffer[4096];
 
   // read
   ssize_t bytes_read = read(
@@ -82,7 +110,8 @@ int main(void)
     return EXIT_FAILURE;
   }
 
-  buffer[bytes_read] = '\0'; // null terminate the buffer
+  // null terminate the buffer
+  buffer[bytes_read] = '\0';
 
   printf("Received %zd bytes:\n", bytes_read);
   printf("%s\n", buffer);
