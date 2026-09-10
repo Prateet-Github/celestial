@@ -11,6 +11,7 @@
 
 int server_create(uint16_t port)
 {
+  // create socket
   int server_fd = socket(AF_INET, SOCK_STREAM, 0);
 
   if (server_fd == -1)
@@ -28,7 +29,7 @@ int server_create(uint16_t port)
     return -1;
   }
 
-  // Set the listening socket to non-blocking mode.
+  // set the listening socket to non-blocking mode
   if (fcntl(server_fd, F_SETFL, flags | O_NONBLOCK) == -1)
   {
     perror("fcntl F_SETFL");
@@ -41,6 +42,7 @@ int server_create(uint16_t port)
       .sin_port = htons(port),
       .sin_addr.s_addr = htonl(INADDR_ANY)};
 
+  // bind
   if (bind(
           server_fd,
           (struct sockaddr *)&server_addr,
@@ -51,6 +53,7 @@ int server_create(uint16_t port)
     return -1;
   }
 
+  // listen
   if (listen(server_fd, 128) == -1)
   {
     perror("listen");
@@ -66,6 +69,7 @@ int server_accept(int server_fd)
   struct sockaddr_in client_addr;
   socklen_t client_len = sizeof(client_addr);
 
+  // accept
   int client_fd = accept(
       server_fd,
       (struct sockaddr *)&client_addr,
