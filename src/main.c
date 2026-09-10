@@ -27,6 +27,16 @@ int main(void)
 
   printf("kqueue created: %d\n", kq);
 
+  if (event_loop_add_read(kq, server_fd) == -1)
+  {
+    perror("event_loop_add_read");
+    close(kq);
+    close(server_fd);
+    return EXIT_FAILURE;
+  }
+
+  printf("Server socket registered with kqueue\n");
+
   int client_fd = server_accept(server_fd);
 
   if (client_fd == -1)
