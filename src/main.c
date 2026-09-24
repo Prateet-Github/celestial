@@ -65,85 +65,116 @@ int main(void)
           event->ident,
           event->filter);
 
-      if (event->filter != EVFILT_READ)
+      // if (event->filter != EVFILT_READ)
+      // {
+      //   continue;
+      // }
+
+      if (event->filter == EVFILT_READ)
       {
-        continue;
-      }
-
-      if ((int)event->ident == server_fd)
-      {
-        int client_fd = server_accept(server_fd);
-
-        if (client_fd == -1)
+        if ((int)event->ident == server_fd)
         {
-          continue;
+          int client_fd = server_accept(server_fd);
+
+          if (client_fd == -1)
+          {
+            continue;
+          }
+
+          printf("Client connected: fd=%d\n", client_fd);
+
+          if (event_loop_add_read(kq, client_fd) == -1)
+          {
+            perror("event_loop_add_read client");
+            close(client_fd);
+            continue;
+          }
+
+          printf(
+              "Client fd=%d registered with kqueue\n",
+              client_fd);
         }
-
-        printf("Client connected: fd=%d\n", client_fd);
-
-        if (event_loop_add_read(kq, client_fd) == -1)
+        else
         {
-          perror("event_loop_add_read client");
-          close(client_fd);
-          continue;
+          int client_fd = (int)event->ident;
+
+          printf(
+              "Client fd=%d is readable\n",
+              client_fd);
+
+          char buffer[4096];
+
+          ssize_t bytes_read = read(
+              client_fd,
+              buffer,
+              sizeof(buffer) - 1);
+
+          if (bytes_read > 0)
+          {
+            buffer[bytes_read] = '\0';
+
+            printf(
+                "Received %zd bytes:\n%s\n",
+                bytes_read,
+                buffer);
+
+            if (event_loop_add_write(kq, client_fd) == -1)
+            {
+              perror("event_loop_add_write");
+              close(client_fd);
+              continue;
+            }
+
+            printf(
+                "Client fd=%d registered for write\n",
+                client_fd);
+          }
+          else if (bytes_read == 0)
+          {
+            printf(
+                "Client fd=%d disconnected\n",
+                client_fd);
+
+            close(client_fd);
+          }
+          else
+          {
+            perror("read");
+            close(client_fd);
+          }
         }
-
-        printf(
-            "Client fd=%d registered with kqueue\n",
-            client_fd);
       }
-
-      else
+      else if (event->filter == EVFILT_WRITE)
       {
         int client_fd = (int)event->ident;
 
         printf(
-            "Client fd=%d is readable\n",
+            "Client fd=%d is writable\n",
             client_fd);
 
-        char buffer[4096];
+        size_t response_length;
 
-        ssize_t bytes_read = read(
+        const char *response =
+            http_response(&response_length);
+
+        ssize_t bytes_written = write(
             client_fd,
-            buffer,
-            sizeof(buffer) - 1);
+            response,
+            response_length);
 
-        if (bytes_read > 0)
+        if (bytes_written == -1)
         {
-          buffer[bytes_read] = '\0';
-
-          printf(
-              "Received %zd bytes:\n%s\n",
-              bytes_read,
-              buffer);
-
-          size_t response_length;
-
-          const char *response = http_response(&response_length);
-
-          ssize_t bytes_written = write(
-              client_fd,
-              response,
-              response_length);
-
-          if (bytes_written == -1)
-          {
-            perror("write");
-          }
-        }
-        else if (bytes_read == 0)
-        {
-          printf(
-              "Client fd=%d disconnected\n",
-              client_fd);
-
+          perror("write");
           close(client_fd);
+          continue;
         }
-        else
-        {
-          perror("read");
-          close(client_fd);
-        }
+
+        printf(
+            "Sent %zd bytes to client fd=%d\n",
+            bytes_written,
+            client_fd);
+
+        close(client_fd);
       }
     }
   }
