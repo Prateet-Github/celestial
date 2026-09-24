@@ -9,6 +9,18 @@
 #include <fcntl.h>
 #include <errno.h>
 
+static int set_nonblocking(int fd)
+{
+  int flags = fcntl(fd, F_GETFL, 0);
+
+  if (flags == -1)
+  {
+    return -1;
+  }
+
+  return fcntl(fd, F_SETFL, flags | O_NONBLOCK);
+}
+
 int server_create(uint16_t port)
 {
   // create socket
@@ -69,7 +81,6 @@ int server_accept(int server_fd)
   struct sockaddr_in client_addr;
   socklen_t client_len = sizeof(client_addr);
 
-  // accept
   int client_fd = accept(
       server_fd,
       (struct sockaddr *)&client_addr,
@@ -83,6 +94,13 @@ int server_accept(int server_fd)
     }
 
     perror("accept");
+    return -1;
+  }
+
+  if (set_nonblocking(client_fd) == -1)
+  {
+    perror("fcntl client");
+    close(client_fd);
     return -1;
   }
 
