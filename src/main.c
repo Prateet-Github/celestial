@@ -7,6 +7,8 @@
 
 #include "http.h"
 #include "connection.h"
+#include "http_parser.h"
+#include "request_handler.h"
 #include <errno.h>
 
 int main(void)
@@ -68,11 +70,6 @@ int main(void)
           event->ident,
           event->filter);
 
-      // if (event->filter != EVFILT_READ)
-      // {
-      //   continue;
-      // }
-
       if (event->filter == EVFILT_READ)
       {
         if ((int)event->ident == server_fd)
@@ -85,14 +82,6 @@ int main(void)
           }
 
           printf("Client connected: fd=%d\n", client_fd);
-
-          // struct connection *connection = &connections[client_fd];
-
-          // connection->fd = client_fd;
-          // connection->read_length = 0;
-          // connection->write_buffer = NULL;
-          // connection->write_length = 0;
-          // connection->write_offset = 0;
 
           struct connection *connection = &connections[client_fd];
 
@@ -124,7 +113,19 @@ int main(void)
 
           if (bytes_read > 0)
           {
-            printf("Received %zd bytes:\n%s\n", bytes_read, connection->read_buffer);
+            struct http_request request;
+
+            if (http_parse_request(
+                    connection->read_buffer,
+                    connection->read_length,
+                    &request) == -1)
+            {
+              printf("Invalid HTTP request\n");
+              close(client_fd);
+              continue;
+            }
+
+            request_handle(&request);
 
             size_t response_length;
 
