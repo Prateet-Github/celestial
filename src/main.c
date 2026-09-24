@@ -86,13 +86,17 @@ int main(void)
 
           printf("Client connected: fd=%d\n", client_fd);
 
+          // struct connection *connection = &connections[client_fd];
+
+          // connection->fd = client_fd;
+          // connection->read_length = 0;
+          // connection->write_buffer = NULL;
+          // connection->write_length = 0;
+          // connection->write_offset = 0;
+
           struct connection *connection = &connections[client_fd];
 
-          connection->fd = client_fd;
-          connection->read_length = 0;
-          connection->write_buffer = NULL;
-          connection->write_length = 0;
-          connection->write_offset = 0;
+          connection_init(connection, client_fd);
 
           if (event_loop_add_read(kq, client_fd) == -1)
           {
@@ -116,20 +120,11 @@ int main(void)
           struct connection *connection =
               &connections[client_fd];
 
-          ssize_t bytes_read = read(
-              client_fd,
-              connection->read_buffer,
-              sizeof(connection->read_buffer) - 1);
+          ssize_t bytes_read = connection_read(connection);
 
           if (bytes_read > 0)
           {
-            connection->read_length = (size_t)bytes_read;
-            connection->read_buffer[bytes_read] = '\0';
-
-            printf(
-                "Received %zd bytes:\n%s\n",
-                bytes_read,
-                connection->read_buffer);
+            printf("Received %zd bytes:\n%s\n", bytes_read, connection->read_buffer);
 
             size_t response_length;
 
@@ -176,16 +171,13 @@ int main(void)
             "Client fd=%d is writable\n",
             client_fd);
 
-        ssize_t bytes_written = write(
-            client_fd,
-            connection->write_buffer +
-                connection->write_offset,
-            connection->write_length -
-                connection->write_offset);
+        ssize_t bytes_written =
+            connection_write(connection);
 
         if (bytes_written == -1)
         {
-          if (errno == EAGAIN || errno == EWOULDBLOCK)
+          if (errno == EAGAIN ||
+              errno == EWOULDBLOCK)
           {
             printf(
                 "Client fd=%d not writable yet\n",
@@ -199,9 +191,15 @@ int main(void)
           continue;
         }
 
-        connection->write_offset += (size_t)bytes_written;
+        if (bytes_written == 0)
+        {
+          continue;
+        }
 
-        printf("Sent %zd bytes to client fd=%d\n", bytes_written, client_fd);
+        printf(
+            "Sent %zd bytes to client fd=%d\n",
+            bytes_written,
+            client_fd);
 
         if (connection->write_offset ==
             connection->write_length)
