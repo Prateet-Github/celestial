@@ -6,6 +6,8 @@
 #include "event_loop.h"
 
 #include "http.h"
+#include "connection.h"
+#include <errno.h>
 
 int main(void)
 {
@@ -40,6 +42,7 @@ int main(void)
   printf("Server socket registered with kqueue\n");
 
   struct kevent events[16];
+  struct connection connections[1024] = {0};
 
   while (1)
   {
@@ -83,6 +86,14 @@ int main(void)
 
           printf("Client connected: fd=%d\n", client_fd);
 
+          struct connection *connection = &connections[client_fd];
+
+          connection->fd = client_fd;
+          connection->read_length = 0;
+          connection->write_buffer = NULL;
+          connection->write_length = 0;
+          connection->write_offset = 0;
+
           if (event_loop_add_read(kq, client_fd) == -1)
           {
             perror("event_loop_add_read client");
@@ -102,21 +113,31 @@ int main(void)
               "Client fd=%d is readable\n",
               client_fd);
 
-          char buffer[4096];
+          struct connection *connection =
+              &connections[client_fd];
 
           ssize_t bytes_read = read(
               client_fd,
-              buffer,
-              sizeof(buffer) - 1);
+              connection->read_buffer,
+              sizeof(connection->read_buffer) - 1);
 
           if (bytes_read > 0)
           {
-            buffer[bytes_read] = '\0';
+            connection->read_length = (size_t)bytes_read;
+            connection->read_buffer[bytes_read] = '\0';
 
             printf(
                 "Received %zd bytes:\n%s\n",
                 bytes_read,
-                buffer);
+                connection->read_buffer);
+
+            size_t response_length;
+
+            connection->write_buffer =
+                http_response(&response_length);
+
+            connection->write_length = response_length;
+            connection->write_offset = 0;
 
             if (event_loop_add_write(kq, client_fd) == -1)
             {
@@ -148,33 +169,52 @@ int main(void)
       {
         int client_fd = (int)event->ident;
 
+        struct connection *connection =
+            &connections[client_fd];
+
         printf(
             "Client fd=%d is writable\n",
             client_fd);
 
-        size_t response_length;
-
-        const char *response =
-            http_response(&response_length);
-
         ssize_t bytes_written = write(
             client_fd,
-            response,
-            response_length);
+            connection->write_buffer +
+                connection->write_offset,
+            connection->write_length -
+                connection->write_offset);
 
         if (bytes_written == -1)
         {
+          if (errno == EAGAIN || errno == EWOULDBLOCK)
+          {
+            printf(
+                "Client fd=%d not writable yet\n",
+                client_fd);
+
+            continue;
+          }
+
           perror("write");
           close(client_fd);
           continue;
         }
+
+        connection->write_offset += (size_t)bytes_written;
 
         printf(
             "Sent %zd bytes to client fd=%d\n",
             bytes_written,
             client_fd);
 
-        close(client_fd);
+        if (connection->write_offset ==
+            connection->write_length)
+        {
+          printf(
+              "Response completely sent to fd=%d\n",
+              client_fd);
+
+          close(client_fd);
+        }
       }
     }
   }
