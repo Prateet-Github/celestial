@@ -91,11 +91,7 @@ int main(void)
             client_fd);
       }
 
-      /*
-       * Client socket is readable:
-       * data has arrived from the client.
-       */
-      else
+            else
       {
         int client_fd = (int)event->ident;
 
@@ -118,6 +114,19 @@ int main(void)
               "Received %zd bytes:\n%s\n",
               bytes_read,
               buffer);
+        }
+        else if (bytes_read == 0)
+        {
+          printf(
+              "Client fd=%d disconnected\n",
+              client_fd);
+
+          close(client_fd);
+        }
+        else
+        {
+          perror("read");
+          close(client_fd);
         }
       }
     }
