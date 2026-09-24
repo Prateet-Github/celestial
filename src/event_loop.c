@@ -32,3 +32,12 @@ int event_loop_add_write(int kq, int fd)
 
   return kevent(kq, &event, 1, NULL, 0, NULL);
 }
+
+int event_loop_remove_write(int kq, int fd)
+{
+  struct kevent event;
+
+  EV_SET(&event, fd, EVFILT_WRITE, EV_DELETE, 0, 0, NULL);
+
+  return kevent(kq, &event, 1, NULL, 0, NULL);
+}

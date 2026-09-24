@@ -201,16 +201,24 @@ int main(void)
 
         connection->write_offset += (size_t)bytes_written;
 
-        printf(
-            "Sent %zd bytes to client fd=%d\n",
-            bytes_written,
-            client_fd);
+        printf("Sent %zd bytes to client fd=%d\n", bytes_written, client_fd);
 
         if (connection->write_offset ==
             connection->write_length)
         {
           printf(
               "Response completely sent to fd=%d\n",
+              client_fd);
+
+          if (event_loop_remove_write(kq, client_fd) == -1)
+          {
+            perror("event_loop_remove_write");
+            close(client_fd);
+            continue;
+          }
+
+          printf(
+              "Write events disabled for fd=%d\n",
               client_fd);
 
           close(client_fd);

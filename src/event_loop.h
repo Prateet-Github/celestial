@@ -7,6 +7,7 @@ int event_loop_create(void);
 
 int event_loop_add_read(int kq, int fd);
 int event_loop_add_write(int kq, int fd);
+int event_loop_remove_write(int kq, int fd);
 
 int event_loop_wait(
     int kq,
