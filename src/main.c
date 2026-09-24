@@ -5,6 +5,8 @@
 #include "server.h"
 #include "event_loop.h"
 
+#include "http.h"
+
 int main(void)
 {
   int server_fd = server_create(8080);
@@ -91,7 +93,7 @@ int main(void)
             client_fd);
       }
 
-            else
+      else
       {
         int client_fd = (int)event->ident;
 
@@ -114,6 +116,20 @@ int main(void)
               "Received %zd bytes:\n%s\n",
               bytes_read,
               buffer);
+
+          size_t response_length;
+
+          const char *response = http_response(&response_length);
+
+          ssize_t bytes_written = write(
+              client_fd,
+              response,
+              response_length);
+
+          if (bytes_written == -1)
+          {
+            perror("write");
+          }
         }
         else if (bytes_read == 0)
         {
